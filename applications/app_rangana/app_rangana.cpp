@@ -22,11 +22,11 @@
 using namespace femus;
 
 double InitalValueU(const std::vector < double >& x) {
-  return x[0] + x[1];
+  return x[2] + x[1];
 }
 
 double InitalValueP(const std::vector < double >& x) {
-  return x[0];
+  return x[2];
 }
 
 double InitalValueT(const std::vector < double >& x) {
