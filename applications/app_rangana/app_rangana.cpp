@@ -1,6 +1,3 @@
-
-
-
 /** tutorial/Ex1
  * This example shows how to:
  * initialize a femus application;
@@ -22,6 +19,7 @@
 #include "NumericVector.hpp"
 
 using namespace femus;
+
 bool SetBoundaryCondition(const std::vector < double >& x, const char solName[], double& value, const int faceName, const double time) {
   bool dirichlet = true; //dirichlet
   value = 0;
@@ -31,28 +29,17 @@ bool SetBoundaryCondition(const std::vector < double >& x, const char solName[],
 
   return dirichlet;
 }
-void AssemblePoissonProblem(MultiLevelProblem& ml_prob);
-
-// void AssemblePoissonProblem_AD(MultiLevelProblem& ml_prob);
 
 double InitalValueU(const std::vector < double >& x) {
-  return x[2] + x[1];
+  return x[0] + x[1];
 }
 
-double InitalValueP(const std::vector < double >& x) {
-  return x[2];
-}
-
-double InitalValueT(const std::vector < double >& x) {
-  return x[1];
-}
+void AssemblePoissonProblem(MultiLevelProblem& ml_prob);
 
 double GetExactSolutionLaplace(const std::vector < double >& x) {
   double pi = acos(-1.);
   return -pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * cos(pi * x[0]) * cos(pi * x[1]);
 };
-
-
 
 int main(int argc, char** args) {
 
@@ -80,15 +67,11 @@ int main(int argc, char** args) {
 
   mlSol.Initialize("All");    // initialize all varaibles to zero
   
-  
-  
-  // add variables to mlSol
-      mlSol.AddSolution("U", LAGRANGE, FIRST);
-      mlSol.Initialize("All");
+ 
 
       // attach the boundary condition function and generate boundary data
       mlSol.AttachSetBoundaryConditionFunction(SetBoundaryCondition);
-      mlSol.GenerateBdc("u");
+      mlSol.GenerateBdc("U");
 
       // define the multilevel problem attach the mlSol object to it
       MultiLevelProblem mlProb(&mlSol);
@@ -96,8 +79,8 @@ int main(int argc, char** args) {
       // add system Poisson in mlProb as a Linear Implicit System
       LinearImplicitSystem& system = mlProb.add_system < LinearImplicitSystem > ("Poisson");
 
-      // add solution "u" to system
-      system.AddSolutionToSystemPDE("u");
+      // add solution "U" to system
+      system.AddSolutionToSystemPDE("U");
 
       // attach the assembling function to system
       system.SetAssembleFunction(AssemblePoissonProblem);
@@ -106,18 +89,15 @@ int main(int argc, char** args) {
       system.init();
       system.solve();
 
-  
-  
-
-  mlSol.Initialize("U", InitalValueU);
-  //mlSol.Initialize("P", InitalValueP);
-  //mlSol.Initialize("T", InitalValueT);    // note that this initialization is the same as piecewise constant element
-
+//*******************************************************************************************************************      
+//      mlSol.Initialize("All");    // initialize all varaibles to zero      
+//*******************************************************************************************************************
+      
+  //mlSol.Initialize("U", InitalValueU);
+//    
   // print solutions
   std::vector < std::string > variablesToBePrinted;
   variablesToBePrinted.push_back("U");
-  //variablesToBePrinted.push_back("P");
-  //variablesToBePrinted.push_back("T");
 
   VTKWriter vtkIO(&mlSol);
   vtkIO.write(DEFAULT_OUTPUTDIR, "biquadratic", variablesToBePrinted);
@@ -129,7 +109,6 @@ int main(int argc, char** args) {
 
   return 0;
 }
-
 
 void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
   //  ml_prob is the global object from/to where get/set all the data
@@ -163,11 +142,11 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 
   //solution variable
   unsigned soluIndex;
-  soluIndex = mlSol->GetIndex("u");    // get the position of "u" in the ml_sol object
-  unsigned soluType = mlSol->GetSolutionType(soluIndex);    // get the finite element type for "u"
+  soluIndex = mlSol->GetIndex("U");    // get the position of "U" in the ml_sol object
+  unsigned soluType = mlSol->GetSolutionType(soluIndex);    // get the finite element type for "U"
 
   unsigned soluPdeIndex;
-  soluPdeIndex = mlPdeSys->GetSolPdeIndex("u");    // get the position of "u" in the pdeSys object
+  soluPdeIndex = mlPdeSys->GetSolPdeIndex("U");    // get the position of "U" in the pdeSys object
 
   vector < double >  solu; // local solution
   solu.reserve(maxSize);
@@ -307,4 +286,6 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 
   // ***************** END ASSEMBLY *******************
 }
+
+
 
