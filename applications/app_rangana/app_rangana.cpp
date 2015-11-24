@@ -63,7 +63,7 @@ int main(int argc, char** args) {
   MultiLevelSolution mlSol(&mlMsh);
 
   // add variables to mlSol
-  mlSol.AddSolution("U", LAGRANGE, FIRST);
+  mlSol.AddSolution("U", LAGRANGE, SECOND);
   
 
   mlSol.Initialize("All");    // initialize all varaibles to zero
@@ -176,13 +176,17 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
   vector < double > Jac;
   Jac.reserve(maxSize * maxSize);
 
-  if (assembleMatrix)
+  if (assembleMatrix){
     KK->zero(); // Set to zero all the entries of the Global Matrix
+  }
+  //RES->zero();
   int counter = 0;
   // element loop: each process loops only on the elements that owns
   for (int iel = msh->IS_Mts2Gmt_elem_offset[iproc]; iel < msh->IS_Mts2Gmt_elem_offset[iproc + 1]; iel++) {
 
     unsigned kel = msh->IS_Mts2Gmt_elem[iel]; // mapping between paralell dof and mesh dof
+    
+    //=================== GEOMETRY =====================================
     short unsigned kelGeom = el->GetElementType(kel);    // element geometry type
     unsigned nDofu  = el->GetElementDofNumber(kel, soluType);    // number of solution element dofs
     unsigned nDofx = el->GetElementDofNumber(kel, xType);    // number of coordinate element dofs
