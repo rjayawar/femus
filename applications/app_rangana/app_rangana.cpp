@@ -51,7 +51,7 @@ int main(int argc, char** args) {
   double scalingFactor = 1.;
   // read coarse level mesh and generate finers level meshes
   //mlMsh.ReadCoarseMesh("./input/square.neu", "seventh", scalingFactor);
-  mlMsh.GenerateCoarseBoxMesh( 8,8,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
+  mlMsh.GenerateCoarseBoxMesh( 2,2,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
   /* "seventh" is the order of accuracy that is used in the gauss integration scheme
       probably in the furure it is not going to be an argument of this function   */
   unsigned numberOfUniformLevels = 1;
@@ -178,7 +178,7 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 
   if (assembleMatrix)
     KK->zero(); // Set to zero all the entries of the Global Matrix
-
+  int counter = 0;
   // element loop: each process loops only on the elements that owns
   for (int iel = msh->IS_Mts2Gmt_elem_offset[iproc]; iel < msh->IS_Mts2Gmt_elem_offset[iproc + 1]; iel++) {
 
@@ -260,7 +260,7 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
               for (unsigned kdim = 0; kdim < dim; kdim++) {
                 laplace += (phi_x[i * dim + kdim] * phi_x[j * dim + kdim]) * weight;
               }
-
+	      counter++;
               Jac[i * nDofu + j] += laplace;
             } // end phi_j loop
           } // endif assemble_matrix
@@ -280,6 +280,7 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
       KK->add_matrix_blocked(Jac, l2GMap, l2GMap);
     }
   } //end element loop for each process
+      std::cout << "-------------- "<< counter<< "-----------"  << std::endl;
 
   RES->close();
 
@@ -288,5 +289,10 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
   // ***************** END ASSEMBLY *******************
 }
 
-
+/*void MultiLevelMesh::GenerateCoarseBoxMesh(
+        const unsigned int nx, const unsigned int ny, const unsigned int nz,
+        const double xmin, const double xmax,
+        const double ymin, const double ymax,
+        const double zmin, const double zmax,
+        const ElemType type, const char GaussOrder[])*/
 
