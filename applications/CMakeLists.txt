@@ -94,3 +94,4 @@ ENDIF(BUILD_WILLMOREGEN)
 
 
   ADD_SUBDIRECTORY(app_rangana/)
+  ADD_SUBDIRECTORY(finalProject/)
