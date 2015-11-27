@@ -10,7 +10,7 @@
  * define vtk and gmv writer objects associated to mlSol;
  * print vtk and gmv binary-format files in ./output directory.
  **/
-
+//////////////////////////x is defined in 155
 #include "FemusInit.hpp"
 #include "MultiLevelProblem.hpp"
 #include "VTKWriter.hpp"
@@ -19,7 +19,7 @@
 #include "NumericVector.hpp"
 
 using namespace femus;
-
+//caled from #74
 bool SetBoundaryCondition(const std::vector < double >& x, const char solName[], double& value, const int faceName, const double time) {
   bool dirichlet = true; //dirichlet
   value = 0;
@@ -29,13 +29,13 @@ bool SetBoundaryCondition(const std::vector < double >& x, const char solName[],
 
   return dirichlet;
 }
-
+//not called at all
 double InitalValueU(const std::vector < double >& x) {
   return x[0] + x[1];
 }
-
+double Getneumannboundaryfunction(const std::vector < double >& x);
 void AssemblePoissonProblem(MultiLevelProblem& ml_prob);
-
+//called from 256
 double GetExactSolutionLaplace(const std::vector < double >& x) {
   double pi = acos(-1.);
   return -pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * cos(pi * x[0]) * cos(pi * x[1]);
@@ -248,13 +248,26 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
         for (unsigned i = 0; i < nDofu; i++) {
 
           double laplace = 0.;
+	  double laplace2 = 0.;
 
           for (unsigned jdim = 0; jdim < dim; jdim++) {
             laplace   +=  phi_x[i * dim + jdim] * gradSolu_gss[jdim];
           }
 
           double srcTerm = - GetExactSolutionLaplace(x_gss);
+	  double neumanTerm = Getneumannboundaryfunction(x_gss);
           Res[i] += (srcTerm * phi[i] - laplace) * weight;
+	 if(iel == 0){
+	    if( i == 0){
+	      Res[i] += (neumanTerm * phi[i]-laplace) * weight;
+	      std::cout << "------- "<< i << "------" << iel  << std::endl;
+	    }
+// // // 	    else if(i == 3)
+// // // 	      Res[i] += (neumanTerm * phi[i] ) * weight;
+// // // 	    else if(i == 7)
+// // // 	      Res[i] += (neumanTerm * phi[i] ) * weight;
+	 }	
+	      
 
           if (assembleMatrix) {
             // *** phi_j loop ***
@@ -300,3 +313,7 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
         const double zmin, const double zmax,
         const ElemType type, const char GaussOrder[])*/
 
+double Getneumannboundaryfunction(const std::vector < double >& x) {
+  double pi = acos(-1.);
+  return 99999;//-pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * sin(pi * x[0]) * sin(pi * x[1]);
+};
