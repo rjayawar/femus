@@ -26,6 +26,8 @@ bool SetBoundaryCondition(const std::vector < double >& x, const char solName[],
 
   if (faceName == 1)
     dirichlet = false;
+//   if(faceName ==2)
+//     dirichlet = false;
 
   return dirichlet;
 }
