@@ -35,7 +35,9 @@ double InitalValueU(const std::vector < double >& x) {
 }
 double Getneumannboundaryfunction(const std::vector < double >& x);
 void AssemblePoissonProblem(MultiLevelProblem& ml_prob);
+
 //called from 256
+//this function is the Laplacian of cos(pi x) cos(pi y)
 double GetExactSolutionLaplace(const std::vector < double >& x) {
   double pi = acos(-1.);
   return -pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * cos(pi * x[0]) * cos(pi * x[1]);
@@ -51,7 +53,7 @@ int main(int argc, char** args) {
   double scalingFactor = 1.;
   // read coarse level mesh and generate finers level meshes
   //mlMsh.ReadCoarseMesh("./input/square.neu", "seventh", scalingFactor);
-  mlMsh.GenerateCoarseBoxMesh( 2,2,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
+  mlMsh.GenerateCoarseBoxMesh(8,8,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
   /* "seventh" is the order of accuracy that is used in the gauss integration scheme
       probably in the furure it is not going to be an argument of this function   */
   unsigned numberOfUniformLevels = 1;
@@ -246,18 +248,14 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 
         // *** phi_i loop ***
         for (unsigned i = 0; i < nDofu; i++) {
+          double laplace_mat = 0.;
 
-          double laplace = 0.;
 	  double laplace2 = 0.;
-
-          for (unsigned jdim = 0; jdim < dim; jdim++) {
-            laplace   +=  phi_x[i * dim + jdim] * gradSolu_gss[jdim];
-          }
 
           double srcTerm = - GetExactSolutionLaplace(x_gss);
 	  double neumanTerm = Getneumannboundaryfunction(x_gss);
-          Res[i] += (srcTerm * phi[i] - laplace) * weight;
-	 if(iel == 0){
+          Res[i] += (srcTerm * phi[i]) * weight;
+/*	 if(iel == 0){
 	    if( i == 0){
 	      Res[i] += (neumanTerm * phi[i]-laplace) * weight;
 	      std::cout << "------- "<< i << "------" << iel  << std::endl;
@@ -266,19 +264,19 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 // // // 	      Res[i] += (neumanTerm * phi[i] ) * weight;
 // // // 	    else if(i == 7)
 // // // 	      Res[i] += (neumanTerm * phi[i] ) * weight;
-	 }	
+	 }*/	
 	      
 
           if (assembleMatrix) {
             // *** phi_j loop ***
             for (unsigned j = 0; j < nDofu; j++) {
-              laplace = 0.;
+              laplace_mat = 0.;
 
               for (unsigned kdim = 0; kdim < dim; kdim++) {
-                laplace += (phi_x[i * dim + kdim] * phi_x[j * dim + kdim]) * weight;
+                laplace_mat += (phi_x[i * dim + kdim] * phi_x[j * dim + kdim]) * weight;
               }
 	      counter++;
-              Jac[i * nDofu + j] += laplace;
+              Jac[i * nDofu + j] += laplace_mat;
             } // end phi_j loop
           } // endif assemble_matrix
 
