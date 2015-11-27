@@ -255,8 +255,17 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 	  double laplace2 = 0.;
 
           double srcTerm = - GetExactSolutionLaplace(x_gss);
-	  double neumanTerm = Getneumannboundaryfunction(x_gss);
+	  double neumanTerm = -Getneumannboundaryfunction(x_gss);
           Res[i] += (srcTerm * phi[i]) * weight;
+	  if(x[1][i] == -0.5){
+	    std::cout << "------- "<< i<< "------"  << std::endl;
+	    Res[i] += (neumanTerm * phi[i]) * weight;
+	  }
+	  
+// 	  std::cout << el->GetFaceElementIndex(1,1) << std::endl;
+// 	  if (faceName == 2)
+// 	    Res[i] += (neumanTerm * phi[i]) * weight
+// 	  
 /*	 if(iel == 0){
 	    if( i == 0){
 	      Res[i] += (neumanTerm * phi[i]-laplace) * weight;
@@ -315,5 +324,5 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 
 double Getneumannboundaryfunction(const std::vector < double >& x) {
   double pi = acos(-1.);
-  return 99999;//-pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * sin(pi * x[0]) * sin(pi * x[1]);
+  return 1;//-pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * sin(pi * x[0]) * sin(pi * x[1]);
 };
