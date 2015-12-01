@@ -17,12 +17,13 @@
 #include "GMVWriter.hpp"
 #include "LinearImplicitSystem.hpp"
 #include "NumericVector.hpp"
+#include "Files.hpp"
 
 using namespace femus;
 
 bool SetBoundaryCondition(const std::vector < double >& x, const char solName[], double& value, const int faceName, const double time) {
   bool dirichlet = true; //dirichlet
-  value = 0;
+  value = 1;
 
 //   if (faceName == 2)
 //     dirichlet = false;
@@ -30,8 +31,8 @@ bool SetBoundaryCondition(const std::vector < double >& x, const char solName[],
   return dirichlet;
 }
 
-double InitalValueU(const std::vector < double >& x) {
-  return x[0] + x[1];
+double InitialValueU(const std::vector < double >& x) {
+  return 1;
 }
 
 void AssemblePoissonProblem(MultiLevelProblem& ml_prob);
@@ -46,12 +47,18 @@ int main(int argc, char** args) {
   // init Petsc-MPI communicator
   FemusInit mpinit(argc, args, MPI_COMM_WORLD);
 
+  
+  Files files;
+	files.ConfigureRestart();
+	files.CheckIODirectories();
+	files.RedirectCout();
+	
   // define multilevel mesh
   MultiLevelMesh mlMsh;
   double scalingFactor = 1.;
   // read coarse level mesh and generate finers level meshes
   //mlMsh.ReadCoarseMesh("./input/square.neu", "seventh", scalingFactor);
-  mlMsh.GenerateCoarseBoxMesh( 2,2,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
+  mlMsh.GenerateCoarseBoxMesh( 32,32,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
   /* "seventh" is the order of accuracy that is used in the gauss integration scheme
       probably in the furure it is not going to be an argument of this function   */
   unsigned numberOfUniformLevels = 1;
@@ -66,7 +73,7 @@ int main(int argc, char** args) {
   mlSol.AddSolution("U", LAGRANGE, SECOND);
   
 
-  mlSol.Initialize("All");    // initialize all varaibles to zero
+  mlSol.Initialize("U", InitialValueU);    // initialize all varaibles to zero
   
  
 
@@ -101,12 +108,12 @@ int main(int argc, char** args) {
   variablesToBePrinted.push_back("U");
 
   VTKWriter vtkIO(&mlSol);
-  vtkIO.write(DEFAULT_OUTPUTDIR, "biquadratic", variablesToBePrinted);
+  vtkIO.write(files.GetOutputPath(), "biquadratic", variablesToBePrinted);
 
-  GMVWriter gmvIO(&mlSol);
-  variablesToBePrinted.push_back("all");
-  gmvIO.SetDebugOutput(false);
-  gmvIO.write(DEFAULT_OUTPUTDIR, "biquadratic", variablesToBePrinted);
+//  /* GMVWriter gmvIO(&mlSol);
+//   variablesToBePrinted.push_back("all");
+//   gmvIO.SetDebugOutput(false);
+//   g*/mvIO.write(DEFAULT_OUTPUTDIR, "biquadratic", variablesToBePrinted);
 
   return 0;
 }
@@ -247,25 +254,25 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
         // *** phi_i loop ***
         for (unsigned i = 0; i < nDofu; i++) {
 
-          double laplace = 0.;
+          double laplace_mat = 0.;
 
-          for (unsigned jdim = 0; jdim < dim; jdim++) {
-            laplace   +=  phi_x[i * dim + jdim] * gradSolu_gss[jdim];
-          }
+//           for (unsigned jdim = 0; jdim < dim; jdim++) {
+//             laplace   +=  phi_x[i * dim + jdim] * gradSolu_gss[jdim];
+//           }
 
           double srcTerm = - GetExactSolutionLaplace(x_gss);
-          Res[i] += (srcTerm * phi[i] - laplace) * weight;
+          Res[i] += (srcTerm * phi[i] ) * weight;
 
           if (assembleMatrix) {
             // *** phi_j loop ***
             for (unsigned j = 0; j < nDofu; j++) {
-              laplace = 0.;
+              laplace_mat = 0.;
 
               for (unsigned kdim = 0; kdim < dim; kdim++) {
-                laplace += (phi_x[i * dim + kdim] * phi_x[j * dim + kdim]) * weight;
+                laplace_mat += (phi_x[i * dim + kdim] * phi_x[j * dim + kdim]) * weight;
               }
 	      counter++;
-              Jac[i * nDofu + j] += laplace;
+              Jac[i * nDofu + j] += laplace_mat;
             } // end phi_j loop
           } // endif assemble_matrix
 
