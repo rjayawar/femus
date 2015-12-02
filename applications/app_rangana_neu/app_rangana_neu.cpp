@@ -35,17 +35,12 @@ bool SetBoundaryCondition(const std::vector < double >& x, const char solName[],
 //     if(faceName == faceNameVector[j])
 //       dirichlet = false;
 //   }
-  if (faceName == 1)
-    dirichlet = false;
-//   if(faceName ==2)
-//     dirichlet = false;
+
+  if (faceName == 1)    dirichlet = false;
 
   return dirichlet;
 }
-//not called at all
-double InitalValueU(const std::vector < double >& x) {
-  return x[0] + x[1];
-}
+
 double Getneumannboundaryfunction(const std::vector < double >& x);
 
 void AssemblePoissonProblem(MultiLevelProblem& ml_prob);
@@ -65,11 +60,7 @@ int main(int argc, char** args) {
   // define multilevel mesh
   MultiLevelMesh mlMsh;
   
-  //   double scalingFactor = 1.;
-  // read coarse level mesh and generate finers level meshes
-  //mlMsh.ReadCoarseMesh("./input/square.neu", "seventh", scalingFactor);
-  
-  mlMsh.GenerateCoarseBoxMesh(2,2,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
+  mlMsh.GenerateCoarseBoxMesh(32,32,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
   /* "seventh" is the order of accuracy that is used in the gauss integration scheme
       probably in the furure it is not going to be an argument of this function   */
   unsigned numberOfUniformLevels = 1;
@@ -86,8 +77,6 @@ int main(int argc, char** args) {
 
   mlSol.Initialize("All");    // initialize all varaibles to zero
   
- 
-
       // attach the boundary condition function and generate boundary data
       mlSol.AttachSetBoundaryConditionFunction(SetBoundaryCondition);
       mlSol.GenerateBdc("U");
@@ -155,11 +144,44 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 
   const unsigned  dim = msh->GetDimension(); // get the domain dimension of the problem
   unsigned dim2 = (3 * (dim - 1) + !(dim - 1));        // dim2 is the number of second order partial derivatives (1,3,6 depending on the dimension)
+
   const unsigned maxSize = static_cast< unsigned >(ceil(pow(3, dim)));          // conservative: based on line3, quad9, hex27
+  const unsigned maxSize_face = static_cast< unsigned >(ceil(pow(3, dim-1))); 
 
   unsigned    iproc = msh->processor_id(); // get the process_id (for parallel computation)
 
-  //solution variable
+// ===========================  
+  vector < vector < double > > x(dim);    // local coordinates
+  unsigned xType = 2; // get the finite element type for "x", it is always 2 (LAGRANGE QUADRATIC)
+  vector < vector < double> > x_face(dim);
+
+  for (unsigned i = 0; i < dim; i++) {
+    x[i].reserve(maxSize);
+    x_face[i].reserve(maxSize_face);
+  }
+// ===========================  
+
+// ===========================  
+  vector <double> phi;  // local test function
+  vector <double> phi_x; // local test function first order partial derivatives
+  vector <double> phi_xx; // local test function second order partial derivatives
+
+  phi.reserve(maxSize);
+  phi_x.reserve(maxSize * dim);
+  phi_xx.reserve(maxSize * dim2);
+  double weight = 0.; // gauss point weight
+// ===========================  
+
+  //face related quantities ===========
+  double weight_face = 0.; // gauss point weight
+  vector <double> phi_face;  // local test function
+  vector <double> phi_face_x; // local test function first order partial derivatives
+  phi.reserve(maxSize_face);
+  phi_x.reserve(maxSize_face * dim);
+  vector<double> normal(dim,0);
+  //face related quantities ===========
+
+  //solution variable ========================
   unsigned soluIndex;
   soluIndex = mlSol->GetIndex("U");    // get the position of "U" in the ml_sol object
   unsigned soluType = mlSol->GetSolutionType(soluIndex);    // get the finite element type for "U"
@@ -169,23 +191,9 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 
   vector < double >  solu; // local solution
   solu.reserve(maxSize);
-
-  vector < vector < double > > x(dim);    // local coordinates
-  unsigned xType = 2; // get the finite element type for "x", it is always 2 (LAGRANGE QUADRATIC)
-
-  for (unsigned i = 0; i < dim; i++) {
-    x[i].reserve(maxSize);
-  }
-
-  vector <double> phi;  // local test function
-  vector <double> phi_x; // local test function first order partial derivatives
-  vector <double> phi_xx; // local test function second order partial derivatives
-  double weight; // gauss point weight
-
-  phi.reserve(maxSize);
-  phi_x.reserve(maxSize * dim);
-  phi_xx.reserve(maxSize * dim2);
-
+  //solution variable ========================
+  
+  // ========================
   vector< double > Res; // local redidual vector
   Res.reserve(maxSize);
 
@@ -193,12 +201,15 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
   l2GMap.reserve(maxSize);
   vector < double > Jac;
   Jac.reserve(maxSize * maxSize);
+  // ========================
 
   if (assembleMatrix){
     KK->zero(); // Set to zero all the entries of the Global Matrix
   }
-  //RES->zero();
+  RES->zero();
+  
   int counter = 0;
+  
   // element loop: each process loops only on the elements that owns
   for (int iel = msh->IS_Mts2Gmt_elem_offset[iproc]; iel < msh->IS_Mts2Gmt_elem_offset[iproc + 1]; iel++) {
 
@@ -289,7 +300,41 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 // // // 	    else if(i == 7)
 // // // 	      Res[i] += (neumanTerm * phi[i] ) * weight;
 	 }*/	
-	      
+
+	// Boundary integral ====================
+	  double tau=0.;
+	       
+	  // loop on faces
+	  for(unsigned jface=0; jface < el->GetElementFaceNumber(kel); jface++) {
+            std::vector < double > xx(3,0.);
+	    // look for boundary faces
+	    if(el->GetFaceElementIndex(kel,jface)<0) {
+	      unsigned int face = -(msh->el->GetFaceElementIndex(kel,jface)+1);	      
+
+	      unsigned nve = msh->el->GetElementFaceDofNumber(kel,jface,soluType);
+		const unsigned felt = msh->el->GetElementFaceType(kel, jface);  
+		for(unsigned i=0; i<nve; i++) {
+		  unsigned inode=msh->el->GetFaceVertexIndex(kel,jface,i)-1u;
+		  unsigned inode_Metis=msh->GetMetisDof(inode,2);
+		  unsigned int ilocal = msh->el->GetLocalFaceVertexIndex(kel, jface, i);
+		  for(unsigned idim=0; idim<dim; idim++) {
+		    x_face[idim][i]=(*msh->_coordinate->_Sol[idim])(inode_Metis);
+		  }
+		}
+		for(unsigned igs=0; igs < msh->_finiteElement[felt][soluType]->GetGaussPointNumber(); igs++) {
+		  msh->_finiteElement[felt][soluType]->JacobianSur(x_face,igs,weight_face,phi_face,phi_face_x,normal);
+		  //phi1 =msh->_finiteElement[felt][SolType2]->GetPhi(igs);
+		  // *** phi_i loop ***
+		  for(unsigned i=0; i<nve; i++) {
+		    unsigned int ilocal = msh->el->GetLocalFaceVertexIndex(kel, jface, i);
+                           Res[ilocal] +=  phi_face[i] * neumanTerm * weight_face;
+
+		  }  //i loop
+		}  //gauss loop
+	    }
+	  }   // boundary element loop 
+	// Boundary integral ====================
+
 
           if (assembleMatrix) {
             // *** phi_j loop ***
@@ -337,7 +382,7 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
 
 double Getneumannboundaryfunction(const std::vector < double >& x) {
 //   double pi = acos(-1.);
-  return 1.0;//-pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * sin(pi * x[0]) * sin(pi * x[1]);
+  return -20.;//-pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * sin(pi * x[0]) * sin(pi * x[1]);
 };
 
 // bool Dirichletcondition( const int &faceName){
