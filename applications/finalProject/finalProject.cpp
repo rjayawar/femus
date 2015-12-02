@@ -19,11 +19,22 @@
 #include "NumericVector.hpp"
 
 using namespace femus;
+
+
+
 //caled from #74
 bool SetBoundaryCondition(const std::vector < double >& x, const char solName[], double& value, const int faceName, const double time) {
   bool dirichlet = true; //dirichlet
   value = 0;
-
+//   std::vector < int > faceNameVector ;
+//   faceNameVector[0] = 1;
+//   faceNameVector[1] = 2;
+//   faceNameVector[2] = 0;
+//   faceNameVector[3] = 0;
+//   for(unsigned j = 0; j < 4; j++){
+//     if(faceName == faceNameVector[j])
+//       dirichlet = false;
+//   }
   if (faceName == 1)
     dirichlet = false;
 //   if(faceName ==2)
@@ -36,6 +47,7 @@ double InitalValueU(const std::vector < double >& x) {
   return x[0] + x[1];
 }
 double Getneumannboundaryfunction(const std::vector < double >& x);
+
 void AssemblePoissonProblem(MultiLevelProblem& ml_prob);
 
 //called from 256
@@ -57,7 +69,7 @@ int main(int argc, char** args) {
   // read coarse level mesh and generate finers level meshes
   //mlMsh.ReadCoarseMesh("./input/square.neu", "seventh", scalingFactor);
   
-  mlMsh.GenerateCoarseBoxMesh(8,8,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
+  mlMsh.GenerateCoarseBoxMesh(2,2,0,-0.5,0.5,-0.5,0.5,0.,0.,QUAD9,"seventh");
   /* "seventh" is the order of accuracy that is used in the gauss integration scheme
       probably in the furure it is not going to be an argument of this function   */
   unsigned numberOfUniformLevels = 1;
@@ -259,10 +271,9 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
           double srcTerm = - GetExactSolutionLaplace(x_gss);
 	  double neumanTerm = Getneumannboundaryfunction(x_gss);
           Res[i] += (srcTerm * phi[i]) * weight;
-	  if(x[1][i] == -0.5){
-	    std::cout << "------- "<< i<< "------"  << std::endl;
-	    Res[i] += (neumanTerm * phi[i]) * weight;
-	  }
+// 	  if(x[1][i] == -0.5){
+// 	    Res[i] += (neumanTerm * phi[i]) * weight;
+// 	  }
 	  
 // 	  std::cout << el->GetFaceElementIndex(1,1) << std::endl;
 // 	  if (faceName == 2)
@@ -325,6 +336,14 @@ void AssemblePoissonProblem(MultiLevelProblem& ml_prob) {
         const ElemType type, const char GaussOrder[])*/
 
 double Getneumannboundaryfunction(const std::vector < double >& x) {
-  double pi = acos(-1.);
-  return 99.0;//-pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * sin(pi * x[0]) * sin(pi * x[1]);
+//   double pi = acos(-1.);
+  return 1.0;//-pi * pi * cos(pi * x[0]) * cos(pi * x[1]) - pi * pi * sin(pi * x[0]) * sin(pi * x[1]);
 };
+
+// bool Dirichletcondition( const int &faceName){
+//   for(unsigned j = 0; j < 4; j++){
+//     if(faceName == faceNameVector[j])
+//       dirichlet = false;
+//   }
+//   return dirichlet;
+// }
